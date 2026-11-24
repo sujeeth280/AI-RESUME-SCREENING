@@ -8,7 +8,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "sqlite:///./resume_ai.db"
+    "sqlite:////app/data/resume_ai.db"
 )
 
 connect_args = {}

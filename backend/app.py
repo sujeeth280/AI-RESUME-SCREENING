@@ -13,7 +13,8 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from ai_service import analyze_resume, hash_text
@@ -62,12 +63,20 @@ app = FastAPI(
 )
 
 
+FRONTEND_URL = os.getenv("FRONTEND_URL", "")
+
+_allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+if FRONTEND_URL:
+    _allowed_origins.append(FRONTEND_URL)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=_allowed_origins,
+    allow_origin_regex=r"https://.*\.up\.railway\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -378,3 +387,21 @@ def get_candidate(
             **analysis,
         },
     }
+
+
+# ── Serve React frontend (production) ─────────────────────────────────────────
+_STATIC_DIR = BASE_DIR / "static"
+
+if _STATIC_DIR.exists():
+
+    app.mount(
+        "/assets",
+        StaticFiles(directory=_STATIC_DIR / "assets"),
+        name="assets",
+    )
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_spa(full_path: str):
+        """Catch-all: return index.html for any non-API route (SPA routing)."""
+        return FileResponse(_STATIC_DIR / "index.html")
+
